@@ -1,0 +1,17 @@
+\begin{tabular}{@{}llrrrr@{}}
+\toprule
+Integrator & Accelerations & rtol & $e$ vs.\ quadrature & $\max|\Delta E|$ (J) & Evaluations \\
+\midrule
+DOP853 & closed form & $10^{-4}$ & $7.3\times10^{-3}$ & $4.7\times10^{-3}$ & 10,352 \\
+DOP853 & closed form & $10^{-6}$ & $1.1\times10^{-4}$ & $1.4\times10^{-4}$ & 15,923 \\
+DOP853 & closed form & $10^{-8}$ & $1.5\times10^{-7}$ & $3.5\times10^{-7}$ & 25,574 \\
+DOP853 & closed form & $10^{-10}$ & $2.0\times10^{-9}$ & $2.5\times10^{-9}$ & 43,154 \\
+DOP853 & closed form & $10^{-12}$ & $1.2\times10^{-10}$ & $1.4\times10^{-10}$ & 53,240 \\
+DOP853 & closed form & $10^{-13}$ & $9.1\times10^{-12}$ & $8.8\times10^{-12}$ & 70,214 \\
+Radau & closed form & $10^{-8}$ & $1.2\times10^{-7}$ & $1.4\times10^{-7}$ & 124,746 \\
+Radau & closed form & $10^{-10}$ & $7.2\times10^{-10}$ & $9.9\times10^{-10}$ & 386,046 \\
+Radau & closed form & $10^{-13}$ & $6.8\times10^{-11}$ & $2.0\times10^{-11}$ & 2,046,293 \\
+DOP853 & linear solve & $10^{-8}$ & $1.5\times10^{-7}$ & $3.5\times10^{-7}$ & 25,562 \\
+DOP853 & linear solve & $10^{-13}$ & $3.1\times10^{-9}$ & $2.6\times10^{-9}$ & 70,373 \\
+\bottomrule
+\end{tabular}
