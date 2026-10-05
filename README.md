@@ -12,10 +12,16 @@ pole starts horizontal and at rest, and the system is simulated for 10 s.
 
 Because the cart is so light, the mass matrix becomes nearly singular every time
 the pole passes through the vertical: its determinant falls by a factor of 10⁶.
-At each of the 11 vertical crossings, θ̇ spikes to 4,429 rad/s for about 1 µs,
-while the swing itself has a period of 1.8 s. At a relative tolerance of 10⁻⁶,
-a standard explicit integrator reports success, yet its error is about 100 times
-the acceptance threshold.
+At each of the 11 vertical crossings, |θ̇| peaks at 4,429 rad/s. The peak's
+full width at half maximum is 1.08 µs, but the tails are long: 10 µs away it is
+still about 477 rad/s. The swing itself has a period of 1.8 s.
+
+As scored, the problem tests step-size control. Every SciPy ODE solver, run at
+its default tolerances, reports success on this problem, yet their errors range
+from about 0.09 to 3.8 against an acceptance threshold of 10⁻⁶.
+
+The near-singular mass matrix also limits a general linear solve to about 10⁻⁹
+accuracy. That is well inside the threshold, so it is reported but not scored.
 
 The full problem statement is in [`light_cartpole.pdf`](light_cartpole.pdf). It
 gives the parameters, the error definition, the acceptance threshold

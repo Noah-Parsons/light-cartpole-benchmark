@@ -8,6 +8,7 @@
 \usepackage{siunitx}
 \usepackage[hidelinks]{hyperref}
 \usepackage{caption}
+\usepackage[section]{placeins}
 \captionsetup{font=small,labelfont=bf}
 \setlength{\parskip}{0.45em}
 \setlength{\parindent}{0pt}
@@ -33,24 +34,44 @@ geometry, not from a modelling choice. A nearly massless cart cannot resist the
 horizontal reaction of the pole, so at the vertical almost nothing opposes
 horizontal motion.
 
-The consequence is a spike in the velocities. Each time the pole passes the
-vertical, $\dot\theta$ rises from a few rad/s to about \Peak~rad/s and falls back
-again within roughly \Fwhm~\si{\micro\second}, while the swing itself has a period
-of about \SI{1.8}{\second}. The two time scales differ by more than a factor of a
-million. The system is a two-body tree with no closed loops, no constraints and no
-contact, so all of the difficulty comes from the conditioning of the mass matrix
-and the speed of these events.
+The consequence is a spike in the velocities. At each passage through the
+vertical, $|\dot\theta|$ peaks at about \Peak~rad/s. The peak has a full width at
+half maximum of \Fwhm~\si{\micro\second}, but its tails are long: \SI{10}{\micro\second}
+away, the angular velocity is still about \Tail~rad/s. The swing itself has a period
+of about \SI{1.8}{\second}, so the width of the peak and the period of the swing
+differ by more than a factor of a million.
 
-The problem is meant to test three things: whether step-size control locates and
-resolves the events; whether the method computes accelerations accurately when the
-mass matrix is near-singular; and whether a solution reported as successful is in
-fact accurate. On the last point, a standard explicit integrator run at a relative tolerance of
-$10^{-6}$, already tighter than the default in most ODE libraries, completes the
-problem and reports success with no warning, yet its error is about a hundred times
-the acceptance threshold defined below. The problem complements the
-\emph{Double four-bar mechanism}, in which singular positions arise in the
-constraints rather than in the mass matrix, and follows the \emph{Stiff flyball
-governor}~\cite{gonzalez} in its definition of the reference solution and the error.
+The system is a two-body tree with no closed loops and no contact. The mass matrix
+and its near-singularity are described here in the minimal coordinates $(x,\theta)$,
+in which no constraint equations are needed. In a dependent-coordinate formulation
+the prismatic and revolute joints become constraints and the mass matrix is
+constant, so the near-singularity does not appear in the mass matrix itself, though
+that matrix is badly scaled, with entries six orders of magnitude apart. The
+velocity spike, however, is a property of the motion and is present in any
+formulation.
+
+As scored, the problem tests step-size control: whether an integrator locates and
+resolves these short events, and whether a run reported as successful is in fact
+accurate. On the second point, each of the five ODE solvers in SciPy, run at its
+default tolerances, completes this problem and reports success. Their errors $e$,
+defined below, range from \EDefaultMin\ to \EDefaultMax; SciPy's default method,
+RK45, gives $e = \EDefaultRK$, which is comparable to the amplitude of the motion
+itself, against an acceptance threshold of $10^{-6}$. Even at a relative tolerance
+of $10^{-6}$, DOP853 reports success with an error about a hundred times the
+threshold.
+
+The near-singular mass matrix has a second, smaller effect. Computing the
+accelerations with a general linear solve, rather than in closed form, limits the
+attainable accuracy to about $10^{-9}$ (Table~1). That floor lies three orders of
+magnitude inside the threshold, so it is not scored; it is reported as a secondary
+observation.
+
+The problem complements the \emph{Double four-bar mechanism}~\cite{doublefourbar},
+in which singular positions arise in the constraints rather than in the mass
+matrix. It follows the \emph{Stiff flyball governor}~\cite{flyball} in defining the
+reference solution by convergence under tightening tolerances and the error as an
+RMS over sampled values, within the benchmarking framework of
+Gonz\'alez et al.~\cite{gonzalez}.
 
 \section*{System}
 
@@ -115,7 +136,8 @@ $\theta$.}
 \caption{Angular velocity, and determinant of the mass matrix relative to its
 maximum, in the \SI{20}{\micro\second} around the first vertical crossing. The
 spike has a peak of \Peak~rad/s and a full width at half maximum of
-\Fwhm~\si{\micro\second}; the same event recurs at every crossing.}
+\Fwhm~\si{\micro\second}; at \SI{10}{\micro\second} from the crossing $|\dot\theta|$
+is still about \Tail~rad/s. The same event recurs at every crossing.}
 \end{figure}
 
 \section*{Reference solution}
@@ -134,7 +156,13 @@ with the explicit eighth-order Runge--Kutta method DOP853~\cite{hairer1} as
 implemented in SciPy~\cite{scipy}. The relative tolerance was tightened from
 $10^{-4}$ to $10^{-13}$ (with absolute tolerance $10^{-2}\times$ the relative
 tolerance), and the run at $10^{-13}$ forms the reference. Repeating the ladder with
-the implicit Radau IIA method~\cite{hairer2} gives the same converged trajectory.
+the implicit Radau IIA method~\cite{hairer2} converges to the same trajectory: at
+$10^{-13}$ it agrees with the quadrature solution below to $e =$~\ERadau.
+
+The reference run takes \RefCPU~s on one thread of an Intel Core Ultra~7 255HX
+under Windows~11, with Python~\PythonVersion\ and SciPy~\ScipyVersion. This time is
+the fastest of three identical runs. Errors at loose tolerances can differ between
+SciPy versions; the converged reference does not.
 
 The convergence was checked against a solution obtained without any time
 integration. With zero horizontal momentum and conserved energy, the motion reduces
@@ -148,6 +176,14 @@ which was evaluated, and inverted for $\theta(t)$, in 30-digit arithmetic with
 mpmath~\cite{mpmath}. It gives a quarter period of \Qperiod~s. Against this solution
 the integrated reference has an error $e$ (defined below) of \Equad, and its
 \Ncross~vertical crossings fall within \CrossErr~s of the exact times.
+
+The integrated solution, rather than the quadrature, is used as the reference
+because it is produced the way the benchmark asks solutions to be produced, by
+time integration of the equations of motion, and because its convergence can be
+shown directly. The quadrature depends on conservation laws that hold only for
+this force-free, rest-start case, so it serves as an independent check. Since the
+two agree to \Equad, five orders of magnitude inside the threshold, the choice does
+not affect any score.
 
 \begin{table}[h]
 \centering
@@ -216,6 +252,14 @@ accompanying archive and at
 M.~Gonz\'alez, D.~Dopico, U.~Lugr\'is, and J.~Cuadrado.
 A benchmarking system for MBS simulation software: problem standardization and
 performance measurement. \emph{Multibody System Dynamics}, 16(2):179--190, 2006.
+\bibitem{doublefourbar}
+J.~Cuadrado. Double four bar mechanism. IFToMM TC for Multibody Dynamics, Library
+of Computational Benchmark Problems.
+\url{https://www.iftomm-multibody.org/benchmark/problem/Double_four_bar_mechanism/}.
+\bibitem{flyball}
+F.~Gonz\'alez and M.~Gonz\'alez. Stiff flyball governor. IFToMM TC for Multibody
+Dynamics, Library of Computational Benchmark Problems.
+\url{https://www.iftomm-multibody.org/benchmark/problem/Stiff_flyball_governor/}.
 \bibitem{hairer1}
 E.~Hairer, S.~P.~N{\o}rsett, and G.~Wanner.
 \emph{Solving Ordinary Differential Equations I: Nonstiff Problems}.

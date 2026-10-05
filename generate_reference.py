@@ -44,11 +44,18 @@ integration. The integrated reference is compared against it.
 from __future__ import annotations
 
 import math
+import platform
 import time
 from pathlib import Path
 
 import numpy as np
+import scipy
 from scipy.integrate import solve_ivp
+
+
+def mpmath_version():
+    import mpmath
+    return mpmath.__version__
 
 HERE = Path(__file__).resolve().parent
 
@@ -336,6 +343,15 @@ def main():
             print(f"  {meth:6s} {form:12s} rtol={rt:7.0e}  e_quad={r['e_quad']:.2e}"
                   f"  dE={r['dE']:.1e}  nfev={r['nfev']:6d}  cpu={cpu:.3f}s")
 
+    # each SciPy solver at its default tolerances (rtol 1e-3, atol 1e-6)
+    defaults = []
+    for meth in ("RK45", "DOP853", "LSODA", "BDF", "Radau"):
+        sol = solve_ivp(rhs, (0.0, T_END), Y0, method=meth, t_eval=T_OUT)
+        defaults.append(dict(method=meth, success=bool(sol.success), nfev=sol.nfev,
+                             e_quad=error(sol.y, Yq)))
+        print(f"  {meth:6s} default tolerances: success={sol.success}"
+              f"  e_quad={defaults[-1]['e_quad']:.3g}")
+
     # ---- results.txt
     E = energy(Yref)
     data = np.column_stack([T_OUT, Yref[0], Yref[2], Yref[1], Yref[3], E - E[0]])
@@ -374,6 +390,15 @@ def main():
         mid = 0.5 * (a + b)
         a, b = (mid, b) if 1.0 / inv_speed(mid) > peak / 2 else (a, mid)
     fwhm = 2 * quad(inv_speed, 0.0, a, epsabs=1e-16, epsrel=1e-12)[0]
+    # the tails are long: |thd| 10 microseconds after a crossing
+    a, b = 0.0, 0.5
+    for _ in range(200):
+        mid = 0.5 * (a + b)
+        if quad(inv_speed, 0.0, mid, epsabs=1e-16, epsrel=1e-12)[0] < 1e-5:
+            a = mid
+        else:
+            b = mid
+    tail = 1.0 / inv_speed(a)
 
     # ---- convergence.txt
     with open(HERE / "convergence.txt", "w", encoding="utf-8") as fh:
@@ -387,14 +412,23 @@ def main():
         fh.write(f"Vertical crossings: {len(crossings)}; worst timing error vs "
                  f"quadrature: {worst_cross:.2e} s\n")
         fh.write(f"Peak |thetadot|: {peak:.1f} rad/s at each crossing, full width "
-                 f"at half maximum {fwhm:.3e} s\n\n")
+                 f"at half maximum {fwhm:.3e} s, {tail:.0f} rad/s at 10 us\n\n")
         fh.write(f"{'method':8s}{'form':14s}{'rtol':>9s}{'atol':>9s}{'e_vs_quad':>12s}"
                  f"{'e_vs_ref':>12s}{'max|dE| (J)':>13s}{'nfev':>9s}{'CPU (s)':>9s}\n")
         for r in rows:
             fh.write(f"{r['method']:8s}{r['form']:14s}{r['rtol']:9.0e}"
                      f"{r['rtol'] * 1e-2:9.0e}{r['e_quad']:12.3e}{r['e_ref']:12.3e}"
                      f"{r['dE']:13.2e}{r['nfev']:9d}{r['cpu']:9.3f}\n")
-        fh.write("\nCPU times are single-run wall-clock minima of 3 runs, Python/SciPy.\n")
+        fh.write("\nSciPy solvers at their default tolerances (rtol 1e-3, atol 1e-6):\n")
+        for d in defaults:
+            fh.write(f"  {d['method']:8s}reported success: {str(d['success']):5s}"
+                     f"  e_vs_quad = {d['e_quad']:.3g}  nfev = {d['nfev']}\n")
+        fh.write(f"\nCPU (s) is the fastest of 3 identical runs, wall-clock, one thread.\n"
+                 f"Python {platform.python_version()}, NumPy {np.__version__}, "
+                 f"SciPy {scipy.__version__}, mpmath {mpmath_version()}\n"
+                 f"{platform.platform()}, {platform.processor()}\n"
+                 "Errors do not depend on the machine; at loose tolerances they can "
+                 "differ slightly between SciPy versions.\n")
 
     # ---- convergence.tex
     def sci(v):
@@ -429,6 +463,16 @@ def main():
         fh.write(f"\\newcommand{{\\Peak}}{{{peak:,.0f}}}\n")
         fh.write(f"\\newcommand{{\\Fwhm}}{{{fwhm * 1e6:.2f}}}\n")
         fh.write(f"\\newcommand{{\\RefCPU}}{{{ref_cpu:.2f}}}\n")
+        fh.write(f"\\newcommand{{\\Tail}}{{{tail:.0f}}}\n")
+        radau = [r for r in rows if r["method"] == "Radau" and r["rtol"] == 1e-13][0]
+        fh.write(f"\\newcommand{{\\ERadau}}{{{sci(radau['e_quad'])}}}\n")
+        rk = [d for d in defaults if d["method"] == "RK45"][0]
+        fh.write(f"\\newcommand{{\\EDefaultRK}}{{{rk['e_quad']:.1f}}}\n")
+        fh.write(f"\\newcommand{{\\EDefaultMin}}{{{min(d['e_quad'] for d in defaults):.2f}}}\n")
+        fh.write(f"\\newcommand{{\\EDefaultMax}}{{{max(d['e_quad'] for d in defaults):.1f}}}\n")
+        fh.write(f"\\newcommand{{\\NDefaultOK}}{{{sum(d['success'] for d in defaults)}}}\n")
+        fh.write(f"\\newcommand{{\\ScipyVersion}}{{{scipy.__version__}}}\n")
+        fh.write(f"\\newcommand{{\\PythonVersion}}{{{platform.python_version()}}}\n")
 
     print("drawing figures ...")
     draw_schematic(HERE / "schematic.png")
