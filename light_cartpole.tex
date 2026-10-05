@@ -52,7 +52,7 @@ formulation.
 
 As scored, the problem tests step-size control: whether an integrator locates and
 resolves these short events, and whether a run reported as successful is in fact
-accurate. On the second point, each of the five ODE solvers in SciPy, run at its
+accurate. On the second point, each of the \NSolvers\ ODE solvers in SciPy, run at its
 default tolerances, completes this problem and reports success. Their errors $e$,
 defined below, range from \EDefaultMin\ to \EDefaultMax; SciPy's default method,
 RK45, gives $e = \EDefaultRK$, which is comparable to the amplitude of the motion
@@ -161,7 +161,7 @@ $10^{-13}$ it agrees with the quadrature solution below to $e =$~\ERadau.
 
 The reference run takes \RefCPU~s on one thread of an Intel Core Ultra~7 255HX
 under Windows~11, with Python~\PythonVersion\ and SciPy~\ScipyVersion. This time is
-the fastest of three identical runs. Errors at loose tolerances can differ between
+the fastest of \Reps\ identical runs. Errors at loose tolerances can differ between
 SciPy versions; the converged reference does not.
 
 The convergence was checked against a solution obtained without any time

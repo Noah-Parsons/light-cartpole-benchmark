@@ -16,8 +16,8 @@ At each of the 11 vertical crossings, |θ̇| peaks at 4,429 rad/s. The peak's
 full width at half maximum is 1.08 µs, but the tails are long: 10 µs away it is
 still about 477 rad/s. The swing itself has a period of 1.8 s.
 
-As scored, the problem tests step-size control. Every SciPy ODE solver, run at
-its default tolerances, reports success on this problem, yet their errors range
+As scored, the problem tests step-size control. All six SciPy ODE solvers, run at
+their default tolerances, report success on this problem, yet their errors range
 from about 0.09 to 3.8 against an acceptance threshold of 10⁻⁶.
 
 The near-singular mass matrix also limits a general linear solve to about 10⁻⁹

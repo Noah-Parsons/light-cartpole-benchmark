@@ -70,6 +70,7 @@ T_OUT = np.round(np.arange(0.0, T_END + DT_OUT / 2, DT_OUT), 10)   # 1001 sample
 THRESHOLD = 1.0e-6
 
 REF_RTOL, REF_ATOL = 1e-13, 1e-15
+REPS = 5          # CPU time is the fastest of this many identical runs
 
 
 # ------------------------------------------------------------------- dynamics
@@ -313,7 +314,7 @@ def plot_convergence(rows, path):
 # ----------------------------------------------------------------------- main
 def main():
     print("integrating reference ...")
-    ref_sol, ref_cpu = run("DOP853", REF_RTOL, REF_ATOL, reps=3)
+    ref_sol, ref_cpu = run("DOP853", REF_RTOL, REF_ATOL, reps=REPS)
     Yref = ref_sol.y
     dense = solve_ivp(rhs, (0.0, T_END), Y0, method="DOP853", rtol=REF_RTOL,
                       atol=REF_ATOL, dense_output=True).sol
@@ -334,7 +335,10 @@ def main():
                                                         1e-12, 1e-13])]
     for meth, form, f, rtols in ladder:
         for rt in rtols:
-            sol, cpu = run(meth, rt, rt * 1e-2, f=f, reps=3)
+            if (meth, f, rt, rt * 1e-2) == ("DOP853", rhs, REF_RTOL, REF_ATOL):
+                sol, cpu = ref_sol, ref_cpu     # same run as the reference; one timing
+            else:
+                sol, cpu = run(meth, rt, rt * 1e-2, f=f, reps=REPS)
             E = energy(sol.y)
             rows.append(dict(method=meth, form=form, rtol=rt, nfev=sol.nfev, cpu=cpu,
                              e_ref=error(sol.y, Yref), e_quad=error(sol.y, Yq),
@@ -345,7 +349,7 @@ def main():
 
     # each SciPy solver at its default tolerances (rtol 1e-3, atol 1e-6)
     defaults = []
-    for meth in ("RK45", "DOP853", "LSODA", "BDF", "Radau"):
+    for meth in ("RK45", "RK23", "DOP853", "LSODA", "BDF", "Radau"):
         sol = solve_ivp(rhs, (0.0, T_END), Y0, method=meth, t_eval=T_OUT)
         defaults.append(dict(method=meth, success=bool(sol.success), nfev=sol.nfev,
                              e_quad=error(sol.y, Yq)))
@@ -423,12 +427,12 @@ def main():
         for d in defaults:
             fh.write(f"  {d['method']:8s}reported success: {str(d['success']):5s}"
                      f"  e_vs_quad = {d['e_quad']:.3g}  nfev = {d['nfev']}\n")
-        fh.write(f"\nCPU (s) is the fastest of 3 identical runs, wall-clock, one thread.\n"
+        fh.write(f"\nCPU (s) is the fastest of {REPS} identical runs, wall-clock, one thread.\n"
                  f"Python {platform.python_version()}, NumPy {np.__version__}, "
                  f"SciPy {scipy.__version__}, mpmath {mpmath_version()}\n"
                  f"{platform.platform()}, {platform.processor()}\n"
                  "Errors do not depend on the machine; at loose tolerances they can "
-                 "differ slightly between SciPy versions.\n")
+                 "differ between SciPy versions.\n")
 
     # ---- convergence.tex
     def sci(v):
@@ -471,6 +475,9 @@ def main():
         fh.write(f"\\newcommand{{\\EDefaultMin}}{{{min(d['e_quad'] for d in defaults):.2f}}}\n")
         fh.write(f"\\newcommand{{\\EDefaultMax}}{{{max(d['e_quad'] for d in defaults):.1f}}}\n")
         fh.write(f"\\newcommand{{\\NDefaultOK}}{{{sum(d['success'] for d in defaults)}}}\n")
+        words = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight"]
+        fh.write(f"\\newcommand{{\\NSolvers}}{{{words[len(defaults)]}}}\n")
+        fh.write(f"\\newcommand{{\\Reps}}{{{words[REPS]}}}\n")
         fh.write(f"\\newcommand{{\\ScipyVersion}}{{{scipy.__version__}}}\n")
         fh.write(f"\\newcommand{{\\PythonVersion}}{{{platform.python_version()}}}\n")
 
